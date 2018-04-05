@@ -730,6 +730,18 @@ abstract class AbstractTypedColumn[T, U]
       w1: With.Aux[TT2, W1, W2]
     ): ThisType[W2, Boolean] =
       typed(self.untyped.between(lowerBound.untyped, upperBound.untyped))
+
+  /**
+    * True if the current column is null.
+    */
+  def isNull(implicit i0:CatalystNullable[U]):ThisType[T,Boolean] =
+    typed(self.untyped.isNull)
+
+  /**
+    * True if the current column is not null.
+    */
+  def isNotNull(implicit i0:CatalystNullable[U]):ThisType[T,Boolean] =
+    typed(self.untyped.isNotNull)
 }
 
 
