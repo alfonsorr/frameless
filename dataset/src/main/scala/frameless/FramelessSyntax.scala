@@ -1,5 +1,6 @@
 package frameless
 
+import org.apache.spark.sql.expressions.Aggregator
 import org.apache.spark.sql.{Column, DataFrame, Dataset}
 
 trait FramelessSyntax {
@@ -14,5 +15,10 @@ trait FramelessSyntax {
 
   implicit class DataframeSyntax(self: DataFrame){
     def unsafeTyped[T: TypedEncoder]: TypedDataset[T] = TypedDataset.createUnsafe(self)
+  }
+
+  implicit class AggregatorSyntax[IN, OUT:TypedEncoder](self: Aggregator[IN,_,OUT]){
+    def toTypedAggregate:TypedAggregate[IN, OUT] =
+      new TypedAggregate(self.toColumn.expr)
   }
 }

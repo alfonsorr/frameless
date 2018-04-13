@@ -1,11 +1,13 @@
 package frameless
 package functions
 
-import frameless.{TypedAggregate, TypedColumn}
 import frameless.functions.aggregate._
+import org.apache.spark.sql.execution.aggregate.TypedCount
+import org.apache.spark.sql.expressions.Aggregator
 import org.apache.spark.sql.{Column, Encoder}
-import org.scalacheck.{Gen, Prop}
 import org.scalacheck.Prop._
+import org.scalacheck.{Gen, Prop}
+import org.scalatest.tagobjects.Slow
 
 class AggregateFunctionsTests extends TypedDatasetSuite {
   def sparkSchema[A: TypedEncoder, U](f: TypedColumn[X1[A], A] => TypedAggregate[X1[A], U]): Prop = {
@@ -576,6 +578,36 @@ class AggregateFunctionsTests extends TypedDatasetSuite {
       stddevSamp[A, X2[Int, A]],
       org.apache.spark.sql.functions.stddev_samp
     )
+    check(forAll(prop[Double] _))
+    check(forAll(prop[Int] _))
+    check(forAll(prop[Short] _))
+    check(forAll(prop[BigDecimal] _))
+    check(forAll(prop[Byte] _))
+  }
+
+  test("custom Aggregator (Count)", Slow)  {
+    val spark = session
+    import spark.implicits._
+    object S extends FramelessSyntax
+    import S.AggregatorSyntax
+
+    def prop[A: TypedEncoder](xs: List[X1[A]])(
+      implicit
+      encEv: Encoder[X1[A]],
+      evCanBeDoubleA: CatalystCast[A, Double]
+    ): Prop = {
+      val aggregator: Aggregator[X1[A], Long, Long] = new TypedCount(x => x.a)
+      val countAgg: TypedAggregate[X1[A], Long] = aggregator.toTypedAggregate
+      val tds = TypedDataset.create(xs)
+      println(xs)
+      println(tds.dataset.select(new Column(aggregator.toColumn.expr)).collect().head)
+      println("antes")
+      println(tds.agg(countAgg).collect().run())
+      println("despues")
+      val prop = tds.agg(countAgg).collect().run() ?= Seq(xs.size.toLong)
+      println("all ok")
+      prop
+    }
     check(forAll(prop[Double] _))
     check(forAll(prop[Int] _))
     check(forAll(prop[Short] _))
